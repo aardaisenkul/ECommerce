@@ -23,5 +23,22 @@
         Init_Callback: function (result) {
             $("#Module-" + this.ModuleName).html(result);
         }
+    },
+    UI: {
+        Alert: function (title, message, type) {
+            swal.fire({
+                title: title,
+                text: message,
+                type: type,
+                buttonsStyling: false,
+                confirmButtonText: "Tamam",
+                confirmButtonClass: "btn btn-brand"
+            });
+        }
+    },
+
+    MailCheck: function (email) {
+        var regex = /^([a-zA-Z0-9_.+-])+\@(([a-zA-Z0-9-])+\.)+([a-zA-Z0-9]{2,4})+$/;
+        return regex.test(email);
     }
 };
