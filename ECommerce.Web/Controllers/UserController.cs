@@ -66,35 +66,67 @@ namespace ECommerce.Web.Controllers
         }
         public IActionResult RegisterAction([FromBody]Data.DTOs.User_RegisterAction_Request dto)
         {
-          
+
             if (!ModelState.IsValid)
             {
                 return BadRequest("data sıkıntılı");
             }
-            if(_unitOfWork.UserRepository.GetByEmail(dto.Email)!= null)
+            if (_unitOfWork.UserRepository.GetByEmail(dto.Email) != null)
             {
                 return BadRequest("Bu email adresi zaten bir kullanıcı adına kayıtlı.");
             }
 
-            User user = new User();
-            user.Admin = false;
-            user.CreateDate = DateTime.UtcNow;
-            user.Deleted = false;
-            user.Name = dto.Name;
-            user.Surname = dto.Surname;
-            user.Email = dto.Email;
-            user.Password = Helper.CryptoHelper.Sha1(dto.Password);
-            user.TitleId = (int)Data.Enums.UserTitle.Customer;
+            User user = new User()
+            {
+            Active = true,
+            CreateDate = DateTime.UtcNow,
+            Deleted = false,
+            Name = dto.Name,
+            Surname = dto.Surname,
+            Email = dto.Email,
+            Password = Helper.CryptoHelper.Sha1(dto.Password),
+            TitleId = (int)Data.Enums.UserTitle.Customer
+        };
+           
 
 
 
             _unitOfWork.UserRepository.Insert(user);
             _unitOfWork.Complete();
+            string validationLink = Data.Singletons.AppSettingsDto.AppSetting.Website + "/email-verify" 
+                + user.Id + "/" + Helper.CryptoHelper.Sha1(user.Id.ToString());
+            _unitOfWork.OutgoingEmailRepository.Insert(new OutgoingEmail()
+            {
+                Active = true,
+                CreateDate = DateTime.Now,
+                Subject = "Hoşgeldiniz, başlamak içib bir adım kaldı!",
+                Body = "Onay linki içerir <a href='" + validationLink + "'>onayla</a>",
+                To = user.Email
+            });
             
             //email veritabanında olmamalı
             //model validation olmalı
             //email onay(yarınki ders konusu)
-            return new JsonResult("??");
+            return new JsonResult("OK");
+        }
+        [Route("/email-verify/{id:int}/{authKey}")]
+        public IActionResult VerifyEmail(int id, string authKey)
+        {
+            var authKeyChipper = Helper.CryptoHelper.Sha1(id.ToString());
+            if (authKey == authKeyChipper)
+            {
+                var user = _unitOfWork.UserRepository.GetById(id);
+                if(user != null)
+                {
+                    user.EmailVerified = true;
+                    _unitOfWork.Complete();
+                }
+            }
+            else
+            {
+
+            }
+            return View();
         }
     }
 }
