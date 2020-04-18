@@ -5,12 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="2.1.1" />
+    <PackageReference Include="System.ComponentModel.Annotations" Version="4.7.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ECommerce.Data.Enum\ECommerce.Data.Enum.csproj" />
-    <ProjectReference Include="..\ECommerce.Data\ECommerce.Data.csproj" />
   </ItemGroup>
 
 </Project>

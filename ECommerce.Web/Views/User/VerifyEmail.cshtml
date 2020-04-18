@@ -1,1 +1,6 @@
-﻿
+﻿@model ECommerce.Data.DTO.Message_Response
+@{ 
+    Layout = "_Layout";
+}
+
+@Html.Raw(ECommerce.Helper.ViewHelper.ExposeMessage(Model))

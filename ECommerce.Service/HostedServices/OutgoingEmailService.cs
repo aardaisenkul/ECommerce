@@ -1,4 +1,4 @@
-﻿using ECommerce.Data.Enums;
+﻿using ECommerce.Data.Enum;
 using ECommerce.Data.Interfaces;
 using ECommerce.Helper;
 using Microsoft.Extensions.DependencyInjection;

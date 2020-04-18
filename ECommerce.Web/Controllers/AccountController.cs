@@ -21,7 +21,7 @@ namespace ECommerce.Web.Controllers
             var user = _unitOfwork.UserRepository.GetById((int)userId);
             return View(user);
         }
-        public IActionResult ProfileSaveAction([FromBody]Data.DTOs.Account_ProfileSaveAction_Request dto)
+        public IActionResult ProfileSaveAction([FromBody]Data.DTO.Account_ProfileSaveAction_Request dto)
         {
             if (!ModelState.IsValid)
             {
@@ -42,7 +42,7 @@ namespace ECommerce.Web.Controllers
         {
             return View();
         }
-        public IActionResult ChangePasswordAction([FromBody] Data.DTOs.Account_ChangePasswordAction_Request dto)
+        public IActionResult ChangePasswordAction([FromBody] Data.DTO.Account_ChangePasswordAction_Request dto)
         {
             if(!ModelState.IsValid) return BadRequest("Kötü Çocuk");
             

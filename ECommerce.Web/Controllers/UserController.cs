@@ -1,8 +1,9 @@
-﻿using ECommerce.Data.Entities;
-using ECommerce.Data.Interfaces;
+﻿using ECommerce.Data.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Linq;
+using ECommerce.Data.Entities;
 
 namespace ECommerce.Web.Controllers
 {
@@ -20,7 +21,7 @@ namespace ECommerce.Web.Controllers
             return View();
         }
 
-        public IActionResult LoginAction([FromBody]Data.DTOs.User_LoginAction_Request user_LoginAction_Request)
+        public IActionResult LoginAction([FromBody]Data.DTO.User_LoginAction_Request user_LoginAction_Request)
         {
             if (!ModelState.IsValid)
             {
@@ -31,7 +32,19 @@ namespace ECommerce.Web.Controllers
 
             if (user == null)
             {
-                return Unauthorized();
+                return BadRequest("E-posta veya şifre hatalı.");
+            }
+            else if (!user.EmailVerified)
+            {
+                return BadRequest("E-posta onayı sağlanmamış.");
+            }
+            else if (user.Deleted)
+            {
+                return BadRequest("Hesabınız kapatılmış.");
+            }
+            else if (!user.Active)
+            {
+                return BadRequest("Hesabınız dondurulmuş.");
             }
             else
             {
@@ -62,71 +75,86 @@ namespace ECommerce.Web.Controllers
             HttpContext.Session.Remove("UserId");
             HttpContext.Session.Remove("Admin");
             HttpContext.Response.Cookies.Delete("rememberme");
+
             return RedirectToAction("Index", "Home");
         }
-        public IActionResult RegisterAction([FromBody]Data.DTOs.User_RegisterAction_Request dto)
-        {
 
+        public IActionResult RegisterAction([FromBody] Data.DTO.User_RegisterAction_Request dto)
+        {
             if (!ModelState.IsValid)
             {
-                return BadRequest("data sıkıntılı");
-            }
-            if (_unitOfWork.UserRepository.GetByEmail(dto.Email) != null)
-            {
-                return BadRequest("Bu email adresi zaten bir kullanıcı adına kayıtlı.");
+                return BadRequest("pis bebe");
             }
 
-            User user = new User()
+            var user = _unitOfWork.UserRepository.Query().SingleOrDefault(a => a.Email == dto.Email);
+
+            if (user != null)
             {
-            Active = true,
-            CreateDate = DateTime.UtcNow,
-            Deleted = false,
-            Name = dto.Name,
-            Surname = dto.Surname,
-            Email = dto.Email,
-            Password = Helper.CryptoHelper.Sha1(dto.Password),
-            TitleId = (int)Data.Enums.UserTitle.Customer
-        };
-           
+                return BadRequest("E-posta adresi ile kayıtlı kullanıcı var.");
+            }
 
-
+            user = new User()
+            {
+                Active = true,
+                CreateDate = DateTime.UtcNow,
+                Email = dto.Email,
+                Name = dto.Name,
+                Password = Helper.CryptoHelper.Sha1(dto.Password),
+                Surname = dto.Surname,
+                TitleId = (int)Data.Enum.UserTitle.Customer
+            };
 
             _unitOfWork.UserRepository.Insert(user);
+
             _unitOfWork.Complete();
-            string validationLink = Data.Singletons.AppSettingsDto.AppSetting.Website + "/email-verify" 
-                + user.Id + "/" + Helper.CryptoHelper.Sha1(user.Id.ToString());
+
+            string validationLink = Data.Singletons.AppSettingsDto.AppSetting.Website + "/email-verify/" +
+                                    user.Id + "/" + Helper.CryptoHelper.Sha1(user.Id.ToString());
+
             _unitOfWork.OutgoingEmailRepository.Insert(new OutgoingEmail()
             {
                 Active = true,
-                CreateDate = DateTime.Now,
-                Subject = "Hoşgeldiniz, başlamak içib bir adım kaldı!",
-                Body = "Onay linki içerir <a href='" + validationLink + "'>onayla</a>",
+                CreateDate = DateTime.UtcNow,
+                Subject = "Hoşgeldiniz, başlamak için bir adım kaldı!",
+                Body = "Onay linki içerir: <a href='" + validationLink + "'>onayla</a>",
                 To = user.Email
             });
-            
-            //email veritabanında olmamalı
-            //model validation olmalı
-            //email onay(yarınki ders konusu)
+
+            _unitOfWork.Complete();
+
             return new JsonResult("OK");
         }
+
         [Route("/email-verify/{id:int}/{authKey}")]
         public IActionResult VerifyEmail(int id, string authKey)
         {
+            Data.DTO.Message_Response messageResponse = new Data.DTO.Message_Response();
             var authKeyChipper = Helper.CryptoHelper.Sha1(id.ToString());
+
             if (authKey == authKeyChipper)
             {
                 var user = _unitOfWork.UserRepository.GetById(id);
-                if(user != null)
+                if (user != null)
                 {
                     user.EmailVerified = true;
                     _unitOfWork.Complete();
+                    messageResponse.MessageType = Data.Enum.MessageType.Success;
+                    messageResponse.Message = "E-posta doğrulama işlemi başarılır. Şimdi giriş yapabilirsiniz.";
+                }
+                else
+                {
+                    messageResponse.MessageType = Data.Enum.MessageType.Danger;
+                    messageResponse.Message = "Doğrulamak istediğiniz hesap sistemde kayıtlı değil.";
                 }
             }
             else
             {
-
+                //başarısız
+                messageResponse.MessageType = Data.Enum.MessageType.Danger;
+                messageResponse.Message = "Doğrulama kodu hatalı. Sistem yöneticisi ile irtibata geçin.";
             }
-            return View();
+
+            return View(messageResponse);
         }
     }
 }
